@@ -96,11 +96,11 @@
       <el-dropdown @command="handleCommand">
         <div class="btn iconfont iconbangzhu"></div>
         <el-dropdown-menu slot="dropdown">
-          <el-dropdown-item command="github">Github</el-dropdown-item>
+          <!-- <el-dropdown-item command="github">Github</el-dropdown-item>
           <el-dropdown-item command="helpDoc">使用文档</el-dropdown-item>
           <el-dropdown-item command="devDoc">开发文档</el-dropdown-item>
           <el-dropdown-item command="site">官方网站</el-dropdown-item>
-          <el-dropdown-item command="issue">意见反馈</el-dropdown-item>
+          <el-dropdown-item command="issue">意见反馈</el-dropdown-item> -->
           <el-dropdown-item disabled>当前：v{{ version }}</el-dropdown-item>
         </el-dropdown-menu>
       </el-dropdown>
@@ -193,7 +193,8 @@ export default {
           url = 'https://wanglin2.github.io/mind-map-docs/help/help1.html'
           break
         case 'devDoc':
-          url = 'https://wanglin2.github.io/mind-map-docs/start/introduction.html'
+          url =
+            'https://wanglin2.github.io/mind-map-docs/start/introduction.html'
           break
         case 'site':
           url = 'https://wanglin2.github.io/mind-map-docs/'

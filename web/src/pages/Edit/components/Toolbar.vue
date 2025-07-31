@@ -26,11 +26,11 @@
       </div>
       <!-- 导出 -->
       <div class="toolbarBlock">
-        <div class="toolbarBtn" @click="openDirectory" v-if="!isMobile">
+        <!-- <div class="toolbarBtn" @click="openDirectory" v-if="!isMobile">
           <span class="icon iconfont icondakai"></span>
           <span class="text">{{ $t('toolbar.directory') }}</span>
-        </div>
-        <el-tooltip
+        </div> -->
+        <!-- <el-tooltip
           effect="dark"
           :content="$t('toolbar.newFileTip')"
           placement="bottom"
@@ -40,8 +40,8 @@
             <span class="icon iconfont iconxinjian"></span>
             <span class="text">{{ $t('toolbar.newFile') }}</span>
           </div>
-        </el-tooltip>
-        <el-tooltip
+        </el-tooltip> -->
+        <!-- <el-tooltip
           effect="dark"
           :content="$t('toolbar.openFileTip')"
           placement="bottom"
@@ -51,7 +51,11 @@
             <span class="icon iconfont iconwenjian1"></span>
             <span class="text">{{ $t('toolbar.openFile') }}</span>
           </div>
-        </el-tooltip>
+        </el-tooltip> -->
+        <div class="toolbarBtn" id="saveBtn" @click="save" v-if="!isMobile">
+          <span class="icon iconfont iconwenjian1"></span>
+          <span class="text">{{ $t('toolbar.save') }}</span>
+        </div>
         <div class="toolbarBtn" @click="saveLocalFile" v-if="!isMobile">
           <span class="icon iconfont iconlingcunwei"></span>
           <span class="text">{{ $t('toolbar.saveAs') }}</span>
@@ -63,7 +67,7 @@
         <div
           class="toolbarBtn"
           @click="$bus.$emit('showExport')"
-          style="margin-right: 0;"
+          style="margin-right: 0"
         >
           <span class="icon iconfont iconexport"></span>
           <span class="text">{{ $t('toolbar.export') }}</span>
@@ -461,6 +465,11 @@ export default {
     // 创建本地文件
     async createNewLocalFile() {
       await this.createLocalFile(exampleData)
+    },
+
+    // 存
+    async save() {
+      this.$bus.$emit('saveData')
     },
 
     // 另存为
