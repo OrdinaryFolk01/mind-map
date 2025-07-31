@@ -8,6 +8,18 @@ const backgroundStyleProps = [
   'backgroundSize'
 ]
 
+export const shapeStyleProps = [
+  'gradientStyle',
+  'startColor',
+  'endColor',
+  'startDir',
+  'endDir',
+  'fillColor',
+  'borderColor',
+  'borderWidth',
+  'borderDasharray'
+]
+
 //  样式类
 class Style {
   //   设置背景样式
@@ -112,6 +124,8 @@ class Style {
 
   // 更新当前节点生效的样式数据
   addToEffectiveStyles(styles) {
+    // effectiveStyles目前只提供给格式刷插件使用，所以如果没有注册该插件，那么不需要保存该数据
+    if (!this.ctx.mindMap.painter) return
     this.ctx.effectiveStyles = {
       ...this.ctx.effectiveStyles,
       ...styles
@@ -126,17 +140,10 @@ class Style {
 
   // 形状
   shape(node) {
-    const styles = {
-      gradientStyle: this.merge('gradientStyle'),
-      startColor: this.merge('startColor'),
-      endColor: this.merge('endColor'),
-      startDir: this.merge('startDir'),
-      endDir: this.merge('endDir'),
-      fillColor: this.merge('fillColor'),
-      borderColor: this.merge('borderColor'),
-      borderWidth: this.merge('borderWidth'),
-      borderDasharray: this.merge('borderDasharray')
-    }
+    const styles = {}
+    shapeStyleProps.forEach(key => {
+      styles[key] = this.merge(key)
+    })
     if (styles.gradientStyle) {
       if (!this._gradient) {
         this._gradient = this.ctx.nodeDraw.gradient('linear')
@@ -191,45 +198,6 @@ class Style {
       })
   }
 
-  // 生成内联样式
-  createStyleText(customStyle = {}) {
-    const styles = {
-      color: this.merge('color'),
-      fontFamily: this.merge('fontFamily'),
-      fontSize: this.merge('fontSize'),
-      fontWeight: this.merge('fontWeight'),
-      fontStyle: this.merge('fontStyle'),
-      textDecoration: this.merge('textDecoration'),
-      ...customStyle
-    }
-    return `
-      color: ${styles.color};
-      font-family: ${styles.fontFamily};
-      font-size: ${styles.fontSize + 'px'};
-      font-weight: ${styles.fontWeight};
-      font-style: ${styles.fontStyle};
-      text-decoration: ${styles.textDecoration}
-    `
-  }
-
-  // 获取文本样式
-  getTextFontStyle() {
-    const styles = {
-      color: this.merge('color'),
-      fontFamily: this.merge('fontFamily'),
-      fontSize: this.merge('fontSize'),
-      fontWeight: this.merge('fontWeight'),
-      fontStyle: this.merge('fontStyle'),
-      textDecoration: this.merge('textDecoration')
-    }
-    return {
-      italic: styles.fontStyle === 'italic',
-      bold: styles.fontWeight,
-      fontSize: styles.fontSize,
-      fontFamily: styles.fontFamily
-    }
-  }
-
   //  html文字节点
   domText(node, fontSizeScale = 1) {
     const styles = {
@@ -238,7 +206,8 @@ class Style {
       fontSize: this.merge('fontSize'),
       fontWeight: this.merge('fontWeight'),
       fontStyle: this.merge('fontStyle'),
-      textDecoration: this.merge('textDecoration')
+      textDecoration: this.merge('textDecoration'),
+      textAlign: this.merge('textAlign')
     }
     node.style.color = styles.color
     node.style.textDecoration = styles.textDecoration
@@ -246,6 +215,7 @@ class Style {
     node.style.fontSize = styles.fontSize * fontSizeScale + 'px'
     node.style.fontWeight = styles.fontWeight || 'normal'
     node.style.fontStyle = styles.fontStyle
+    node.style.textAlign = styles.textAlign
   }
 
   //  标签文字

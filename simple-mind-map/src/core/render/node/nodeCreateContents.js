@@ -32,12 +32,20 @@ const defaultTagStyle = {
   //width: 30 // 标签矩形的宽度，如果不设置，默认以文字的宽度+paddingX*2为宽度
 }
 
+// 获取图片的真实url
+// 因为如果注册了NodeBase64ImageStorage插件，那么节点图片字段保存的实际是一个id，所以如果要获取图片真实的url可以通过该方法
+function getImageUrl() {
+  const img = this.getData('image')
+  return (this.mindMap.renderer.renderTree.data.imgMap || {})[img] || img
+}
+
 //  创建图片节点
 function createImgNode() {
-  const img = this.getData('image')
+  const img = this.getImageUrl()
   if (!img) {
     return
   }
+  img = (this.mindMap.renderer.renderTree.data.imgMap || {})[img] || img
   const imgSize = this.getImgShowSize()
   const node = new SVGImage().load(img).size(...imgSize)
   // 如果指定了加载失败显示的图片，那么加载一下图片检测是否失败
@@ -52,8 +60,11 @@ function createImgNode() {
   if (this.getData('imageTitle')) {
     node.attr('title', this.getData('imageTitle'))
   }
+  node.on('click', e => {
+    this.mindMap.emit('node_img_click', this, node, e)
+  })
   node.on('dblclick', e => {
-    this.mindMap.emit('node_img_dblclick', this, e)
+    this.mindMap.emit('node_img_dblclick', this, e, node)
   })
   node.on('mouseenter', e => {
     this.mindMap.emit('node_img_mouseenter', this, node, e)
@@ -233,8 +244,9 @@ function createTextNode(specifyText) {
   if (this.getData('resetRichText')) {
     delete this.nodeData.data.resetRichText
   }
-  let g = new G()
-  let fontSize = this.getStyle('fontSize', false)
+  const g = new G()
+  const fontSize = this.getStyle('fontSize', false)
+  const textAlign = this.getStyle('textAlign', false)
   // 文本超长自动换行
   let textArr = []
   if (!isUndef(text)) {
@@ -274,6 +286,14 @@ function createTextNode(specifyText) {
     }
     const node = new Text().text(item)
     node.addClass('smm-text-node-wrap')
+    node.attr(
+      'text-anchor',
+      {
+        left: 'start',
+        center: 'middle',
+        right: 'end'
+      }[textAlign] || 'start'
+    )
     this.style.text(node)
     node.y(
       fontSize * noneRichTextNodeLineHeight * index +
@@ -557,6 +577,7 @@ function isUseCustomNodeContent() {
 }
 
 export default {
+  getImageUrl,
   createImgNode,
   getImgShowSize,
   createIconNode,

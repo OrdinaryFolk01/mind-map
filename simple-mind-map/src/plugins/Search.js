@@ -182,6 +182,10 @@ class Search {
     const uid = this.isNodeInstance(currentNode)
       ? currentNode.getData('uid')
       : currentNode.data.uid
+    if (!uid) {
+      callback()
+      return
+    }
     const targetNode = this.mindMap.renderer.findNodeByUid(uid)
     this.mindMap.execCommand('GO_TARGET_NODE', uid, node => {
       if (!this.isNodeInstance(currentNode)) {
@@ -293,7 +297,7 @@ class Search {
     if (richText) {
       return replaceHtmlText(text, searchText, replaceText)
     } else {
-      return text.replaceAll(searchText, replaceText)
+      return text.replace(new RegExp(searchText, 'g'), replaceText)
     }
   }
 

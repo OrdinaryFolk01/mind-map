@@ -12,7 +12,7 @@ import {
   htmlEscape,
   compareVersion
 } from '../utils'
-import { CONSTANTS, richTextSupportStyleList } from '../constants/constant'
+import { richTextSupportStyleList } from '../constants/constant'
 import MindMapNode from '../core/render/node/MindMapNode'
 import { Scope } from 'parchment'
 
@@ -40,6 +40,8 @@ let fontSizeList = new Array(100).fill(0).map((_, index) => {
   return index + 'px'
 })
 
+const RICH_TEXT_EDIT_WRAP = 'ql-editor'
+
 // 富文本编辑插件
 class RichText {
   constructor({ mindMap, pluginOpt }) {
@@ -58,6 +60,7 @@ class RichText {
     this.isCompositing = false
     this.textNodePaddingX = 6
     this.textNodePaddingY = 4
+    this.mindMap.addEditNodeClass(RICH_TEXT_EDIT_WRAP)
     this.initOpt()
     this.extendQuill()
     this.appendCss()
@@ -97,15 +100,29 @@ class RichText {
         word-break: break-all;
         user-select: none;
       }
+
+      .ql-editor .ql-align-left, 
+      .smm-richtext-node-wrap .ql-align-left {
+        text-align: left;
+      }
+
+      .smm-richtext-node-wrap .ql-align-right {
+        text-align: right;
+      }
+
+      .smm-richtext-node-wrap .ql-align-center {
+        text-align: center;
+      }
       `
     )
     let cssText = `
-      .${CONSTANTS.EDIT_NODE_CLASS.RICH_TEXT_EDIT_WRAP} {
+      .${RICH_TEXT_EDIT_WRAP} {
         overflow: hidden;
         padding: 0;
         height: auto;
         line-height: 1.2;
         -webkit-user-select: text;
+        text-align: inherit;
       }
       
       .ql-container {
@@ -148,6 +165,8 @@ class RichText {
 
     this.extendFont([])
 
+    this.extendAlign()
+
     // 扩展quill的字号列表
     const SizeAttributor = Quill.import('attributors/class/size')
     SizeAttributor.whitelist = fontSizeList
@@ -170,6 +189,13 @@ class RichText {
     const FontStyle = Quill.import('attributors/style/font')
     FontStyle.whitelist = fontFamilyList
     Quill.register(FontStyle, true)
+  }
+
+  // 扩展文本对齐方式
+  extendAlign() {
+    const AlignFormat = Quill.import('formats/align')
+    AlignFormat.whitelist = ['right', 'center', 'justify', 'left']
+    Quill.register(AlignFormat, true)
   }
 
   // 显示文本编辑控件
@@ -274,7 +300,7 @@ class RichText {
     }
     this.initQuillEditor()
     this.setQuillContainerMinHeight(originHeight)
-    this.showTextEdit = true
+    this.setIsShowTextEdit(true)
     // 如果是刚创建的节点，那么默认全选，否则普通激活不全选，除非selectTextOnEnterEditText配置为true
     // 在selectTextOnEnterEditText时，如果是在keydown事件进入的节点编辑，也不需要全选
     this.focus(
@@ -308,9 +334,8 @@ class RichText {
 
   // 设置quill编辑器容器的最小高度
   setQuillContainerMinHeight(minHeight) {
-    document.querySelector(
-      '.' + CONSTANTS.EDIT_NODE_CLASS.RICH_TEXT_EDIT_WRAP
-    ).style.minHeight = minHeight + 'px'
+    document.querySelector('.' + RICH_TEXT_EDIT_WRAP).style.minHeight =
+      minHeight + 'px'
   }
 
   // 更新文本编辑框的大小和位置
@@ -338,7 +363,7 @@ class RichText {
   // 获取当前正在编辑的内容
   getEditText() {
     // https://github.com/slab/quill/issues/4509
-    return this.quill.container.firstChild.innerHTML.replaceAll(/  +/g, match =>
+    return this.quill.container.firstChild.innerHTML.replace(/  +/g, match =>
       '&nbsp;'.repeat(match.length)
     )
     // 去除ql-cursor节点
@@ -362,7 +387,7 @@ class RichText {
     const list = nodes && nodes.length > 0 ? nodes : [this.node]
     const node = this.node
     this.textEditNode.style.display = 'none'
-    this.showTextEdit = false
+    this.setIsShowTextEdit(false)
     this.mindMap.emit('rich_text_selection_change', false)
     this.node = null
     this.isInserting = false
@@ -444,7 +469,8 @@ class RichText {
         'background',
         'font',
         'size',
-        'formula'
+        'formula',
+        'align'
       ], // 明确指定允许的格式，不包含有序列表，无序列表等
       theme: 'snow'
     })
@@ -465,7 +491,10 @@ class RichText {
     })
     this.quill.on('selection-change', range => {
       // 刚创建的节点全选不需要显示操作条
-      if (this.isInserting) return
+      if (this.isInserting) {
+        this.isInserting = false
+        return
+      }
       this.lastRange = this.range
       this.range = null
       if (range) {
@@ -590,6 +619,16 @@ class RichText {
     this.isCompositing = false
   }
 
+  // 设置文本编辑框是否处于显示状态
+  setIsShowTextEdit(val) {
+    this.showTextEdit = val
+    if (val) {
+      this.mindMap.keyCommand.stopCheckInSvg()
+    } else {
+      this.mindMap.keyCommand.recoveryCheckInSvg()
+    }
+  }
+
   // 选中全部
   selectAll() {
     this.quill.setSelection(0, this.quill.getLength())
@@ -606,9 +645,19 @@ class RichText {
     if (!this.range && !this.lastRange) return
     const rangeLost = !this.range
     const range = rangeLost ? this.lastRange : this.range
-    clear
-      ? this.quill.removeFormat(range.index, range.length)
-      : this.quill.formatText(range.index, range.length, config)
+    if (clear) {
+      this.quill.removeFormat(range.index, range.length)
+    } else {
+      const { align, ...rest } = config
+      // 文本对齐需要对行进行格式化
+      if (align) {
+        this.quill.formatLine(range.index, range.length, 'align', align)
+      }
+      // 其他内容对文本
+      if (Object.keys(rest).length > 0) {
+        this.quill.formatText(range.index, range.length, rest)
+      }
+    }
     if (rangeLost) {
       this.quill.setSelection(this.lastRange.index, this.lastRange.length)
     }
@@ -655,6 +704,9 @@ class RichText {
         case 'color':
           config.color = value
           break
+        case 'textAlign':
+          config.align = value
+          break
         default:
           break
       }
@@ -688,6 +740,9 @@ class RichText {
           break
         case 'color':
           data.color = value
+          break
+        case 'align':
+          data.textAlign = value
           break
         default:
           break
@@ -780,6 +835,7 @@ class RichText {
 
   // 处理导入数据
   handleSetData(data) {
+    if (!data) return
     // 短期处理，为了兼容老数据，长期会去除
     const isOldRichTextVersion =
       !data.smmVersion || compareVersion(data.smmVersion, '0.13.0') === '<'
@@ -812,12 +868,14 @@ class RichText {
     document.head.removeChild(this.styleEl)
     this.unbindEvent()
     this.mindMap.removeAppendCss('richText')
+    this.mindMap.deleteEditNodeClass(RICH_TEXT_EDIT_WRAP)
   }
 
   // 插件被卸载前做的事情
   beforePluginDestroy() {
     document.head.removeChild(this.styleEl)
     this.unbindEvent()
+    this.mindMap.deleteEditNodeClass(RICH_TEXT_EDIT_WRAP)
   }
 }
 

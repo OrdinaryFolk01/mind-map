@@ -297,12 +297,10 @@ export const debounce = (fn, wait = 300, ctx) => {
 
   return (...args) => {
     if (timeout) clearTimeout(timeout)
-    const callNow = !timeout
     timeout = setTimeout(() => {
       timeout = null
       fn.apply(ctx, args)
     }, wait)
-    if (callNow) fn.apply(ctx, args)
   }
 }
 
@@ -400,7 +398,7 @@ export const nextTick = function (fn, ctx) {
 }
 
 // 检查节点是否超出画布
-export const checkNodeOuter = (mindMap, node) => {
+export const checkNodeOuter = (mindMap, node, offsetX = 0, offsetY = 0) => {
   let elRect = mindMap.elRect
   let { scaleX, scaleY, translateX, translateY } = mindMap.draw.transform()
   let { left, top, width, height } = node
@@ -410,17 +408,17 @@ export const checkNodeOuter = (mindMap, node) => {
   top = top * scaleY + translateY
   let offsetLeft = 0
   let offsetTop = 0
-  if (left < 0) {
-    offsetLeft = -left
+  if (left < 0 + offsetX) {
+    offsetLeft = -left + offsetX
   }
-  if (right > elRect.width) {
-    offsetLeft = -(right - elRect.width)
+  if (right > elRect.width - offsetX) {
+    offsetLeft = -(right - elRect.width) - offsetX
   }
-  if (top < 0) {
-    offsetTop = -top
+  if (top < 0 + offsetY) {
+    offsetTop = -top + offsetY
   }
-  if (bottom > elRect.height) {
-    offsetTop = -(bottom - elRect.height)
+  if (bottom > elRect.height - offsetY) {
+    offsetTop = -(bottom - elRect.height) - offsetY
   }
   return {
     isOuter: offsetLeft !== 0 || offsetTop !== 0,
@@ -511,7 +509,7 @@ export const loadImage = imgFile => {
 // 移除字符串中的html实体
 export const removeHTMLEntities = str => {
   [['&nbsp;', '&#160;']].forEach(item => {
-    str = str.replaceAll(item[0], item[1])
+    str = str.replace(new RegExp(item[0], 'g'), item[1])
   })
   return str
 }
@@ -528,7 +526,7 @@ export const isUndef = data => {
 
 // 移除html字符串中节点的内联样式
 export const removeHtmlStyle = html => {
-  return html.replaceAll(/(<[^\s]+)\s+style=["'][^'"]+["']\s*(>)/g, '$1$2')
+  return html.replace(/(<[^\s]+)\s+style=["'][^'"]+["']\s*(>)/g, '$1$2')
 }
 
 // 给html标签中指定的标签添加内联样式
@@ -586,7 +584,7 @@ export const replaceHtmlText = (html, searchText, replaceText) => {
         // 文本节点
         root.replaceChild(
           document.createTextNode(
-            node.nodeValue.replaceAll(searchText, replaceText)
+            node.nodeValue.replace(new RegExp(searchText, 'g'), replaceText)
           ),
           node
         )
@@ -613,7 +611,7 @@ export const removeHtmlNodeByClass = (html, selector) => {
 
 // 判断一个颜色是否是白色
 export const isWhite = color => {
-  color = String(color).replaceAll(/\s+/g, '')
+  color = String(color).replace(/\s+/g, '')
   return (
     ['#fff', '#ffffff', '#FFF', '#FFFFFF', 'rgb(255,255,255)'].includes(
       color
@@ -623,7 +621,7 @@ export const isWhite = color => {
 
 // 判断一个颜色是否是透明
 export const isTransparent = color => {
-  color = String(color).replaceAll(/\s+/g, '')
+  color = String(color).replace(/\s+/g, '')
   return (
     ['', 'transparent'].includes(color) || /rgba\(\d+,\d+,\d+,0\)/.test(color)
   )
@@ -1004,7 +1002,8 @@ export const addDataToAppointNodes = (appointNodes, data = {}) => {
 export const createUidForAppointNodes = (
   appointNodes,
   createNewId = false,
-  handle = null
+  handle = null,
+  handleGeneralization = false
 ) => {
   const walk = list => {
     list.forEach(node => {
@@ -1013,6 +1012,14 @@ export const createUidForAppointNodes = (
       }
       if (createNewId || isUndef(node.data.uid)) {
         node.data.uid = createUid()
+      }
+      if (handleGeneralization) {
+        const generalizationList = formatGetNodeGeneralization(node.data)
+        generalizationList.forEach(gNode => {
+          if (createNewId || isUndef(gNode.uid)) {
+            gNode.uid = createUid()
+          }
+        })
       }
       handle && handle(node)
       if (node.children && node.children.length > 0) {
@@ -1166,7 +1173,7 @@ export const removeFromParentNodeData = node => {
 // 给html自闭合标签添加闭合状态
 export const handleSelfCloseTags = str => {
   selfCloseTagList.forEach(tagName => {
-    str = str.replaceAll(
+    str = str.replace(
       new RegExp(`<${tagName}([^>]*)>`, 'g'),
       `<${tagName} $1 />`
     )
@@ -1241,7 +1248,7 @@ export const handleInputPasteText = (e, text) => {
   // 去除格式
   text = getTextFromHtml(text)
   // 去除换行
-  // text = text.replaceAll(/\n/g, '')
+  // text = text.replace(/\n/g, '')
   const textArr = text.split(/\n/g)
   const fragment = document.createDocumentFragment()
   textArr.forEach((item, index) => {
